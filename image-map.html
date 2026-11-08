@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kham Kong Run #Special 2026 - Image Route</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
+        body { background-color: #f4f7f6; color: #333; line-height: 1.6; }
+        header { background: linear-gradient(135deg, #0f4c81, #1b9aaa); color: white; text-align: center; padding: 25px 15px; }
+        header h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        header p { font-size: 1rem; opacity: 0.9; }
+        
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+        .card-header { background: #ff6b6b; color: white; padding: 12px 20px; font-size: 1.2rem; font-weight: bold; text-align: center; }
+        .card-body { padding: 20px; }
+
+        /* ส่วนกล่องแสดงรูปภาพแผนที่และตัวนักวิ่ง */
+        .map-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .map-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* ปุ่มสลับเส้นทาง */
+        .route-info { display: flex; gap: 10px; margin-bottom: 15px; }
+        .route-badge { flex: 1; padding: 10px; border-radius: 8px; color: white; text-align: center; font-size: 0.9rem; font-weight: bold; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .route-badge:hover { opacity: 0.85; transform: translateY(-2px); }
+        .badge-thai { background: #e74c3c; }
+        .badge-lao { background: #3498db; }
+        .route-badge.active { border-color: #333; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+        /* ตัวการ์ตูนนักวิ่งที่จะวิ่งทับบนรูปภาพ */
+        #runner {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            transform: translate(-50%, -50%); /* จัดกึ่งกลางพอดีพิกัด */
+            transition: left 0.8s linear, top 0.8s linear; /* ทำให้วิ่งเนียนนุ่ม */
+            z-index: 10;
+        }
+        
+        footer { text-align: center; padding: 20px; color: #777; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Kham Kong Run #Special 2026</h1>
+        <p>โหมดจำลองเส้นทางบนภาพวาด (Image Route Animation)</p>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">🗺️ แผนที่จำลองเส้นทางวิ่งสองฝั่งโขง</div>
+            <div class="card-body">
+                <div class="route-info">
+                    <div class="route-badge badge-thai active" id="btnThai" onclick="switchRoute('thai')">🏃‍♂️ เส้นทาง A: วิ่งฝั่งไทย 5 กม.</div>
+                    <div class="route-badge badge-lao" id="btnLao" onclick="switchRoute('lao')">🏃‍♀️ เส้นทาง B: เดินฝั่งลาว 5 กม.</div>
+                </div>
+
+                <!-- กล่องรูปภาพแผนที่ -->
+                <div class="map-container" id="mapBox">
+                    <!-- 📌 นำลิงก์รูปภาพแผนที่ของคุณมาใส่ตรงช่อง src ด้านล่างนี้ -->
+                    <img src="https://i.ibb.co/30h1n7S/1000102629.jpg" alt="Kham Kong Run Map" id="mapImage">
+                    
+                    <!-- ตัวการ์ตูนนักวิ่ง -->
+                    <div id="runner">🏃‍♂️</div>
+                </div>
+
+                <p style="font-size: 0.85rem; color: #666; text-align: center; margin-top: 10px;">* ตัวการ์ตูนจะวิ่งจำลองตามแนวเส้นสีแดงในภาพโดยอิงจากตำแหน่งเปอร์เซ็นต์ (%) หน้าจอ</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Kham Kong Run #Special 2026 • Chiang Khong</p>
+    </footer>
+
+    <script>
+        // ==========================================
+        // กำหนดเส้นทางเป็นเปอร์เซ็นต์ (%) บนภาพ (X: แนวนอน, Y: แนวตั้ง)
+        // ==========================================
+        
+        // เส้นทางฝั่งไทย (จำลองตามแนวเส้นสีแดงฝั่งซ้ายของภาพ)
+        const routeThai = [
+            { x: 52, y: 38 }, // จุด Start ตรงกลาง
+            { x: 42, y: 41 }, // วิ่งไปทางซ้าย
+            { x: 30, y: 44 }, // เลียบแม่น้ำ
+            { x: 15, y: 46 }, // จุดเลี้ยวไกลสุด (K2.5)
+            { x: 28, y: 50 }, // วิ่งกลับฝั่งล่าง
+            { x: 45, y: 45 }, // เข้าใกล้เส้นชัย
+            { x: 52, y: 38 }  // เส้นชัย Finish
+        ];
+
+        // เส้นทางฝั่งลาว (จำลองตามแนวเส้นสีแดงฝั่งขวาของภาพ)
+        const routeLao = [
+            { x: 58, y: 34 }, // จุดเริ่มต้นท่าเรือห้วยทราย
+            { x: 67, y: 36 }, // จุดเช็คพอยต์ 1
+            { x: 78, y: 40 }, // จุดเช็คพอยต์ 2
+            { x: 73, y: 45 }, // จุดเช็คพอยต์ 3
+            { x: 62, y: 41 }, // วิ่งกลับ
+            { x: 58, y: 34 }  // กลับถึงจุดเริ่มต้น
+        ];
+
+        let currentTimer = null;
+        const runner = document.getElementById('runner');
+
+        function startImageAnimation(routeCoords) {
+            if (currentTimer) clearTimeout(currentTimer);
+            let index = 0;
+
+            function move() {
+                if (index < routeCoords.length) {
+                    let point = routeCoords[index];
+                    // เซ็ตตำแหน่งเปอร์เซ็นต์ X และ Y ให้ตัวการ์ตูนวิ่งทับบนภาพ
+                    runner.style.left = point.x + '%';
+                    runner.style.top = point.y + '%';
+                    
+                    index++;
+                    currentTimer = setTimeout(move, 1200); // ความเร็วในการวิ่งแต่ละจุด (ปรับค่าได้)
+                } else {
+                    currentTimer = setTimeout(() => {
+                        index = 0;
+                        move();
+                    }, 2000); // พัก 2 วิแล้ววิ่งวนใหม่
+                }
+            }
+            move();
+        }
+
+        // ฟังก์ชันสลับปุ่มไทย - ลาว
+        function switchRoute(type) {
+            document.getElementById('btnThai').classList.remove('active');
+            document.getElementById('btnLao').classList.remove('active');
+
+            if (type === 'thai') {
+                document.getElementById('btnThai').classList.add('active');
+                runner.innerHTML = '🏃‍♂️';
+                startImageAnimation(routeThai);
+            } else {
+                document.getElementById('btnLao').classList.add('active');
+                runner.innerHTML = '🏃‍♀️';
+                startImageAnimation(routeLao);
+            }
+        }
+
+        // เริ่มต้นรันเส้นทางฝั่งไทยเมื่อเปิดเว็บ
+        window.onload = function() {
+            startImageAnimation(routeThai);
+        };
+    </script>
+</body>
+</html>
